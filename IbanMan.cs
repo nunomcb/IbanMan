@@ -22,6 +22,17 @@ namespace Iban {
 		}
 
 		// METHODS
+		static private bool checkSHA1(int val, string hash) {
+			SHA1 sha = SHA1.Create();
+			byte[] hashArray = sha.ComputeHash( Encoding.ASCII.GetBytes( val.ToString() ) );
+			string newHash = "";
+
+			foreach ( byte b in hashArray ) {
+				newHash += b.ToString( "x2" );
+			}
+
+			return ( newHash == hash );
+		}
 		private Lock getLock() {
 			switch ( this.LockType ) {
 			case 0:
@@ -48,7 +59,7 @@ namespace Iban {
 		}
 			
 		private void _count(ref int counter, Lock counterLock, ref int sum, Lock sumLock) {
-			const int chunkSize = 20;
+			const int CHUNK_SIZE = 20;
 			int val;
 			int top;
 			int localsum = 0;
@@ -56,10 +67,10 @@ namespace Iban {
 			for (;;) {
 				counterLock.Lock();
 				val = counter;
-				counter += chunkSize;
+				counter += CHUNK_SIZE;
 				counterLock.Unlock();
 
-				top = val + chunkSize;
+				top = val + CHUNK_SIZE;
 
 				for ( ; val < top; val++ ) {
 					if ( val >= this.Max ) {
@@ -104,7 +115,7 @@ namespace Iban {
 		}
 
 		private void _list(ref int counter, Lock counterLock, Collection<int> list, Lock listLock) {
-			const int chunkSize = 20;
+			const int CHUNK_SIZE = 20;
 			int val;
 			int top;
 			Collection<int> tempList = new Collection<int>();
@@ -112,10 +123,10 @@ namespace Iban {
 			for (;;) {
 				counterLock.Lock();
 				val = counter;
-				counter += chunkSize;
+				counter += CHUNK_SIZE;
 				counterLock.Unlock();
 
-				top = val + chunkSize;
+				top = val + CHUNK_SIZE;
 
 				for ( ; val < top; val++ ) {
 					if ( val >= this.Max ) {
@@ -164,10 +175,9 @@ namespace Iban {
 		}
 
 		private void _search(ref int counter, Lock counterLock, string hash, ref int result) {
-			const int chunkSize = 10;
+			const int CHUNK_SIZE = 10;
 			int val;
 			int top;
-			string newHash;
 
 			for (;;) {
 				if ( result != -1 ) {
@@ -176,10 +186,10 @@ namespace Iban {
 
 				counterLock.Lock();
 				val = counter;
-				counter += chunkSize;
+				counter += CHUNK_SIZE;
 				counterLock.Unlock();
 
-				top = val + chunkSize;
+				top = val + CHUNK_SIZE;
 
 				for ( ; val < top; val++ ) {
 					if ( result != -1 || val >= this.Max ) {
@@ -187,17 +197,8 @@ namespace Iban {
 					}
 
 					if ( this.isValid( val ) ) {
-						SHA1 sha = SHA1.Create();
 
-						byte[] hashArray = sha.ComputeHash( Encoding.ASCII.GetBytes( val.ToString() ) );
-
-						newHash = "";
-
-						foreach ( byte b in hashArray ) {
-							newHash += b.ToString( "x2" );
-						}
-
-						if ( newHash == hash ) {
+						if ( checkSHA1( val, hash ) ) {
 							result = val;
 
 							return;
